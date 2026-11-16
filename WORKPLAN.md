@@ -1,37 +1,44 @@
-# CodeFrame MVP — Master Execution Workplan (`WORKPLAN.md`)
+# CodeFrame MVP — Extension-First & Pluggable AI/DB Workplan (`WORKPLAN.md`)
 
 ## ⚠️ STRICT AGENT EXECUTION PROTOCOL (READ FIRST)
-1. **ONE TASK AT A TIME:** You must execute **ONLY ONE TASK** per turn.
+
+1. **ONE TASK AT A TIME:** Execute **ONLY ONE TASK** per turn.
 2. **NO JUMPING AHEAD:** Never create files or run commands for Task `N+1` while working on Task `N`.
 3. **MANDATORY STOP & VERIFY:** At the end of each task, run the specified verification command, report the output, display the **Verification Checkpoint** instructions to the user, and **STOP IMMEDIATELY**. Wait for the user to reply `"Next task"` or `"Approved"` before proceeding.
 4. **NO PLACEHOLDER CODE:** Write complete, working, strictly-typed TypeScript code for every file specified.
+5. **PRESERVE EXISTING FILES:** Do NOT overwrite existing root files like `.gitignore`—append missing entries cleanly.
 
 ---
 
-## Architecture Overview
-- **Monorepo Root (`codeframe/`):** Turborepo + `pnpm` workspaces
-- **Shared Package (`packages/shared`):** `@codeframe/shared` — Shared TypeScript interfaces for API payloads and database DTOs.
-- **Backend & Web Dashboard (`apps/web`):** Next.js (App Router), TypeScript, Tailwind CSS, Prisma ORM (PostgreSQL), and `@google/generative-ai` (`gemini-2.5-flash`). Runs on `http://localhost:3000`.
-- **Chrome Extension (`apps/extension`):** WXT Framework (Manifest V3), React, TypeScript, Tailwind CSS, injected into `[https://www.youtube.com/watch](https://www.youtube.com/watch)*` via an isolated Shadow DOM root.
+## Architecture Overview (Extension-First, DB & AI Agnostic)
+
+- **Monorepo Root (`codeframe/`):** Turborepo + `pnpm` workspaces (`pnpm@11.14.0`).
+- **Shared Package (`packages/shared`):** `@codeframe/shared` — Shared TypeScript interfaces for requests, responses, and `SnippetDTO`.
+- **Chrome Extension (`apps/extension`):** Built FIRST (Tasks 2–4). WXT Framework (Manifest V3), React 19, TypeScript, Tailwind CSS, injected into YouTube via an isolated Shadow DOM root.
+- **Backend & Web Dashboard (`apps/web`):** Built SECOND (Tasks 5–7). Next.js (App Router), TypeScript, Tailwind CSS. Uses a **Pluggable Storage Adapter** (defaults to zero-config local `.data/snippets.json` until a database is chosen) and a **Pluggable AI Adapter** (defaults to a mock/manual code extractor until an LLM provider is chosen).
 
 ---
 
 ## Task 1: Initialize Turborepo Monorepo & Shared Types Package (`packages/shared`)
 
 ### Goal
-Scaffold the `pnpm` workspace, root `turbo.json`, and the `@codeframe/shared` TypeScript package containing all request/response contracts shared between the Chrome Extension and Next.js backend.
+
+Scaffold the `pnpm` workspace, root `turbo.json`, and the `@codeframe/shared` TypeScript package containing all request/response contracts shared between the Chrome Extension and Next.js app.
 
 ### Exact Commands / Files
-Create the following root and shared package files:
-1. `package.json`
-2. `pnpm-workspace.yaml`
-3. `turbo.json`
-4. `.gitignore`
-5. `packages/shared/package.json`
-6. `packages/shared/tsconfig.json`
-7. `packages/shared/src/index.ts`
+
+1. Create `package.json`
+2. Create `pnpm-workspace.yaml`
+3. Create `turbo.json`
+4. Append to existing `.gitignore`
+5. Create `packages/shared/package.json`
+6. Create `packages/shared/tsconfig.json`
+7. Create `packages/shared/src/index.ts`
 
 ### Implementation Specs
+
+- **Append to `.gitignore`**:
+  Ensure `.turbo`, `.wxt`, `.output`, and `.data` are appended if not already present. Do NOT overwrite existing lines.
 - **`pnpm-workspace.yaml`**:
   ```yaml
   packages:
@@ -39,7 +46,7 @@ Create the following root and shared package files:
     - "packages/*"
   ```
 - **Root `package.json`**:
-  - Set `"name": "codeframe"`, `"private": true`, `"packageManager": "pnpm@9.15.0"`.
+  - Set `"name": "codeframe"`, `"private": true`, `"packageManager": "pnpm@11.14.0"`.
   - Add scripts: `"dev": "turbo run dev"`, `"build": "turbo run build"`, `"typecheck": "turbo run typecheck"`.
   - Add `devDependencies`: `"turbo": "^2.3.0"`, `"typescript": "^5.7.0"`.
 - **`turbo.json`**:
@@ -49,14 +56,16 @@ Create the following root and shared package files:
   - Add script `"typecheck": "tsc --noEmit"`.
 - **`packages/shared/src/index.ts`**:
   Export the following strict interfaces:
+
   ```typescript
   export interface ExtractCodeRequest {
     videoId: string;
-    videoUrl: string;
+    videoUrl: string; // Canonical: https://www.youtube.com/watch?v={videoId}
     videoTitle: string;
     timestamp: number; // in seconds
-    frameBase64: string; // data:image/png;base64,...
+    frameBase64: string; // data:image/webp;base64,...
     userNote?: string;
+    manualCodeOverride?: string; // Optional manual code input while AI is in mock mode
   }
 
   export interface SnippetDTO {
@@ -65,11 +74,12 @@ Create the following root and shared package files:
     videoUrl: string;
     videoTitle: string;
     timestamp: number;
+    frameBase64?: string;
     extractedCode: string;
     language: string;
     explanation: string;
     userNote: string | null;
-    createdAt: string;
+    createdAt: string; // ISO 8601 string
   }
 
   export interface ExtractCodeResponse {
@@ -77,293 +87,246 @@ Create the following root and shared package files:
     snippet?: SnippetDTO;
     error?: string;
   }
+
+  export interface GetSnippetsResponse {
+    success: boolean;
+    snippets: SnippetDTO[];
+    error?: string;
+  }
   ```
+
 - Run `pnpm install` at the root.
 
 ### Verification Checkpoint
-1. Run `pnpm --filter @codeframe/shared typecheck` in the terminal.
+
+1. Run `pnpm --filter @codeframe/shared typecheck`.
 2. Confirm it exits with code `0` and zero TypeScript errors.
 3. **STOP and ask the user to confirm before starting Task 2.**
 
 ---
 
-## Task 2: Scaffold Next.js App (`apps/web`) & Health-Check API with CORS
+## Task 2: Scaffold WXT Chrome Extension Base (`apps/extension`)
 
 ### Goal
-Initialize the Next.js App Router application inside `apps/web`, connect `@codeframe/shared`, and configure CORS headers so the Chrome Extension can make requests to `http://localhost:3000/api/*`.
 
-### Exact Commands / Files
-1. Scaffold Next.js in `apps/web`:
-   ```bash
-   pnpm create next-app@latest apps/web --ts --tailwind --eslint --app --src-dir --import-alias "@/*" --use-pnpm --yes
-   ```
-2. Edit `apps/web/package.json`
-3. Edit `apps/web/next.config.ts` (or `next.config.mjs`)
-4. Create `apps/web/src/app/api/health/route.ts`
-
-### Implementation Specs
-- Add `"@codeframe/shared": "workspace:*"` to `dependencies` in `apps/web/package.json` and run `pnpm install`.
-- In `apps/web/next.config.ts` (or `.mjs`), configure `headers()` for `source: "/api/:path*"` returning:
-  - `Access-Control-Allow-Origin: "*"`
-  - `Access-Control-Allow-Methods: "GET, POST, PUT, DELETE, OPTIONS"`
-  - `Access-Control-Allow-Headers: "Content-Type, Authorization"`
-- In `apps/web/src/app/api/health/route.ts`:
-  - Export `GET()` returning `NextResponse.json({ status: "ok", service: "codeframe-web" })`.
-  - Export `OPTIONS()` returning `new NextResponse(null, { status: 204 })`.
-
-### Verification Checkpoint
-1. Start the server or test route compilation, and run `curl -i http://localhost:3000/api/health`.
-2. Confirm HTTP `200 OK`, JSON `{"status":"ok","service":"codeframe-web"}`, and the `Access-Control-Allow-Origin: *` header.
-3. **STOP and ask the user to confirm before starting Task 3.**
-
----
-
-## Task 3: Configure Prisma ORM & Database Schema (`apps/web`)
-
-### Goal
-Set up Prisma in `apps/web` with a `Snippet` model to store captured YouTube metadata, timestamps, AI-extracted code, and user notes.
-
-### Exact Commands / Files
-1. Install Prisma in `apps/web`:
-   ```bash
-   pnpm --filter web add @prisma/client
-   pnpm --filter web add -D prisma
-   ```
-2. Create `apps/web/prisma/schema.prisma`
-3. Create `apps/web/src/lib/prisma.ts`
-4. Create `apps/web/.env.example` and configure `apps/web/.env`
-
-### Implementation Specs
-- **`apps/web/prisma/schema.prisma`**:
-  - Use PostgreSQL (`provider = "postgresql"`, `url = env("DATABASE_URL")`). *(Note: If the user prefers zero-config local testing before plugging in Supabase/Postgres, ask if they want PostgreSQL or local SQLite `file:./dev.db` for immediate prototyping, defaulting to PostgreSQL if `DATABASE_URL` is provided).*
-  - Define the `Snippet` model:
-    ```prisma
-    model Snippet {
-      id            String   @id @default(cuid())
-      videoId       String
-      videoUrl      String
-      videoTitle    String
-      timestamp     Int
-      extractedCode String   @db.Text
-      language      String   @default("plaintext")
-      explanation   String   @db.Text
-      userNote      String?  @db.Text
-      createdAt     DateTime @default(now())
-
-      @@index([videoId])
-    }
-    ```
-- **`apps/web/src/lib/prisma.ts`**:
-  - Implement standard Next.js `globalForPrisma` singleton pattern exporting `prisma`.
-- Run `pnpm --filter web npx prisma generate` and `pnpm --filter web npx prisma db push`.
-
-### Verification Checkpoint
-1. Confirm `prisma generate` and `prisma db push` succeed without errors.
-2. **STOP and ask the user to confirm before starting Task 4.**
-
----
-
-## Task 4: Build Gemini Vision Extraction & Snippets API (`apps/web`)
-
-### Goal
-Create `POST /api/extract` to send the Base64 video frame to Gemini Vision (`gemini-2.5-flash`), parse the extracted code and explanation, save it to Prisma, and expose `GET /api/snippets` to fetch saved snippets.
-
-### Exact Commands / Files
-1. Install Gemini SDK in `apps/web`:
-   ```bash
-   pnpm --filter web add @google/generative-ai
-   ```
-2. Create `apps/web/src/app/api/extract/route.ts`
-3. Create `apps/web/src/app/api/snippets/route.ts`
-
-### Implementation Specs
-- Ensure `GEMINI_API_KEY` is read from `process.env.GEMINI_API_KEY` in `apps/web/.env`.
-- **`apps/web/src/app/api/extract/route.ts`**:
-  - Export `OPTIONS()` returning status `204` for CORS preflight.
-  - Export `POST(req: Request)`:
-    1. Parse body as `ExtractCodeRequest` from `@codeframe/shared`.
-    2. Validate required fields (`videoId`, `videoUrl`, `timestamp`, `frameBase64`).
-    3. Strip the data URL prefix (`frameBase64.replace(/^data:image\/\w+;base64,/, "")`).
-    4. Call `@google/generative-ai` using model `"gemini-2.5-flash"` with `generationConfig: { responseMimeType: "application/json" }`.
-    5. Prompt Gemini:
-       *"Extract all visible source code from this video tutorial screenshot. Fix obvious OCR typos while preserving exact logic and indentation. If no code is visible, set code to '// No code detected in frame'. Return strict JSON: { \"code\": string, \"language\": string, \"explanation\": string (1-2 concise sentences explaining what the code does) }."*
-    6. Save the result into `prisma.snippet.create({...})`.
-    7. Return `NextResponse.json<ExtractCodeResponse>({ success: true, snippet })`.
-- **`apps/web/src/app/api/snippets/route.ts`**:
-  - Export `GET(req: Request)`:
-    1. Check optional query param `?videoId=...`.
-    2. Query `prisma.snippet.findMany({ where: videoId ? { videoId } : undefined, orderBy: { timestamp: "asc" } })`.
-    3. Return JSON `{ success: true, snippets }`.
-
-### Verification Checkpoint
-1. Test `GET http://localhost:3000/api/snippets` and confirm it returns `{"success":true,"snippets":[]}`.
-2. Test `POST http://localhost:3000/api/extract` with a sample JSON payload containing a small Base64 PNG and verify Gemini responds and saves a record in Prisma.
-3. **STOP and ask the user to confirm before starting Task 5.**
-
----
-
-## Task 5: Scaffold WXT Chrome Extension (`apps/extension`)
-
-### Goal
 Create the WXT Manifest V3 Chrome Extension inside `apps/extension` with React, TypeScript, Tailwind CSS, and `@codeframe/shared` wired up.
 
 ### Exact Commands / Files
+
 1. Create `apps/extension/package.json`
 2. Create `apps/extension/tsconfig.json`
 3. Create `apps/extension/wxt.config.ts`
 4. Create `apps/extension/tailwind.config.js` & `apps/extension/postcss.config.js`
 5. Create `apps/extension/entrypoints/background.ts`
-6. Create `apps/extension/entrypoints/popup/index.html` & `main.tsx`
+6. Create `apps/extension/entrypoints/popup/index.html` & `apps/extension/entrypoints/popup/main.tsx`
 
 ### Implementation Specs
+
 - **`apps/extension/package.json`**:
   - Set `"name": "extension"`, `"private": true`.
   - Scripts: `"dev": "wxt"`, `"build": "wxt build"`, `"typecheck": "tsc --noEmit"`.
   - Dependencies: `"react": "^19.0.0"`, `"react-dom": "^19.0.0"`, `"@codeframe/shared": "workspace:*"`, `"lucide-react": "^0.460.0"`.
   - DevDependencies: `"wxt": "^0.19.0"`, `"@wxt-dev/module-react": "^1.1.0"`, `"tailwindcss": "^3.4.15"`, `"postcss": "^8.4.49"`, `"autoprefixer": "^10.4.20"`, `"@types/react": "^19.0.0"`, `"@types/react-dom": "^19.0.0"`.
 - **`apps/extension/wxt.config.ts`**:
-  ```typescript
-  import { defineConfig } from 'wxt';
-
-  export default defineConfig({
-    modules: ['@wxt-dev/module-react'],
-    manifest: {
-      name: 'CodeFrame — YouTube Code Extractor',
-      description: 'Grab code snippets and timestamped notes directly from YouTube video frames.',
-      version: '0.1.0',
-      permissions: ['activeTab', 'storage'],
-      host_permissions: ['*://*.youtube.com/*', 'http://localhost:3000/*'],
-    },
-  });
-  ```
+  - Configure `@wxt-dev/module-react`.
+  - Set `manifest`:
+    - `name`: `"CodeFrame — YouTube Study & Code Extractor"`
+    - `version`: `"0.1.0"`
+    - `permissions`: `["activeTab", "storage"]`
+    - `host_permissions`: `["*://*[.youtube.com/](https://.youtube.com/)*", "http://localhost:3000/*"]`
+- **`apps/extension/entrypoints/background.ts`**:
+  - Define basic `defineBackground(() => { console.log("CodeFrame background worker ready"); })`.
 - Run `pnpm install` and `pnpm --filter extension build`.
 
 ### Verification Checkpoint
-1. Run `pnpm --filter extension build` and verify that `apps/extension/.output/chrome-mv3/manifest.json` is generated without errors.
-2. **STOP and ask the user to confirm before starting Task 6.**
+
+1. Run `pnpm --filter extension build` and verify that `apps/extension/.output/chrome-mv3/manifest.json` is generated cleanly without errors.
+2. **STOP and ask the user to confirm before starting Task 3.**
 
 ---
 
-## Task 6: Inject Shadow DOM Sidebar onto YouTube Watch Pages (`apps/extension`)
+## Task 3: Inject Shadow DOM Sidebar onto YouTube (`apps/extension`)
 
 ### Goal
-Inject a collapsible, Shadow-DOM-isolated React sidebar onto `[https://www.youtube.com/watch](https://www.youtube.com/watch)*` so YouTube's global CSS never collides with CodeFrame's Tailwind styles.
+
+Inject a collapsible, Shadow-DOM-isolated React sidebar onto YouTube pages that tracks SPA video navigation (`yt-navigate-finish`) and isolates Tailwind styles from YouTube's CSS.
 
 ### Exact Commands / Files
+
 1. Create `apps/extension/entrypoints/youtube.content/style.css`
 2. Create `apps/extension/entrypoints/youtube.content/Sidebar.tsx`
 3. Create `apps/extension/entrypoints/youtube.content/index.tsx`
 
 ### Implementation Specs
+
 - **`style.css`**: Include `@tailwind base; @tailwind components; @tailwind utilities;`.
 - **`index.tsx`**:
-  - Use `defineContentScript` matching `['*://*[.youtube.com/](https://.youtube.com/)*']` with `cssInjectionMode: 'ui'`.
-  - Inside `main(ctx)`, use `createShadowRootUi(ctx, { name: 'codeframe-sidebar', position: 'inline', anchor: 'body', onMount: (container) => { ... } })`.
-  - Render `<Sidebar/>` inside a fixed right-hand drawer (`fixed top-14 right-4 z-[9999] w-[380px]`) with a sleek floating toggle button (`CodeFrame ⚡`) so it works reliably on both Default and Theater YouTube layouts and survives YouTube SPA route transitions.
+  - Use `defineContentScript` with `matches: ['*://*[.youtube.com/](https://.youtube.com/)*']` and `cssInjectionMode: 'ui'`.
+  - Inside `main(ctx)`, mount a Shadow DOM UI via `createShadowRootUi(ctx, { name: 'codeframe-sidebar', position: 'inline', anchor: 'body', onMount: (container) => { ... } })`.
 - **`Sidebar.tsx`**:
-  - Detect current YouTube video ID (`new URLSearchParams(window.location.search).get('v')`) and title (`document.title.replace(' - YouTube', '')`).
-  - Listen for `yt-navigate-finish` on `window` to update the active `videoId` when the user clicks another YouTube video without a full page reload.
-  - Display the dark-mode shell header, active Video ID badge, and a placeholder "Capture Frame" button.
+  - Only show the floating toggle button (`CodeFrame ⚡`) and drawer when `window.location.pathname === '/watch'` and a valid `v` query parameter exists.
+  - Normalize the canonical URL as `[https://www.youtube.com/watch?v=$](https://www.youtube.com/watch?v=$){videoId}` (stripping extra `&t=` or playlist params).
+  - Read the video title from `document.querySelector('h1.ytd-watch-metadata yt-formatted-string')?.textContent` with a fallback to `document.title.replace(/^\(\d+\)\s*/, '').replace(' - YouTube', '')`.
+  - Listen to `yt-navigate-finish` and URL changes so switching videos updates `videoId` and `videoTitle` reliably.
+  - Render a sleek dark-mode collapsible panel (`fixed top-16 right-4 z-[9999] w-[380px]`) displaying the current video title, `videoId` badge, and a placeholder **"Capture Current Frame"** button.
 
 ### Verification Checkpoint
+
 1. Run `pnpm --filter extension build`.
-2. Open Chrome $\rightarrow$ `chrome://extensions` $\rightarrow$ Enable **Developer mode** $\rightarrow$ Click **Load unpacked** $\rightarrow$ Select `apps/extension/.output/chrome-mv3`.
-3. Open any YouTube video (`[https://www.youtube.com/watch?v=](https://www.youtube.com/watch?v=)...`) and verify the floating **CodeFrame** sidebar opens cleanly on the right side of the screen.
-4. **STOP and ask the user to confirm before starting Task 7.**
+2. In Chrome, open `chrome://extensions`, enable **Developer mode**, click **Load unpacked**, and select `apps/extension/.output/chrome-mv3`.
+3. Open any YouTube video and verify the **CodeFrame ⚡** button toggles the dark-mode sidebar cleanly, and clicking another video updates the title and video ID.
+4. **STOP and ask the user to confirm before starting Task 4.**
 
 ---
 
-## Task 7: Build the HTML5 `<video>` Frame Capture & Timestamp Engine (`apps/extension`)
+## Task 4: Build `<video>` Frame Capture, Ad-Guard & Timestamp Seek Engine (`apps/extension`)
 
 ### Goal
-Capture the exact current frame of YouTube's `<video>` player into a Base64 PNG image along with the current playback timestamp (`MM:SS`) whenever the user clicks **"Capture Frame"**.
+
+Capture downscaled WebP screenshots and exact timestamps from YouTube's HTML5 `<video>` element, guard against pre-roll ads, and allow clicking any saved timestamp to jump the video player to that exact second.
 
 ### Exact Commands / Files
+
 1. Create `apps/extension/src/utils/captureFrame.ts`
 2. Update `apps/extension/entrypoints/youtube.content/Sidebar.tsx`
 
 ### Implementation Specs
+
 - **`apps/extension/src/utils/captureFrame.ts`**:
-  - Export `captureYouTubeFrame()` returning `{ frameBase64: string; timestamp: number } | null`:
-    1. Query `const video = document.querySelector<HTMLVideoElement>('video.html5-main-video') || document.querySelector('video')`.
-    2. If `!video || video.videoWidth === 0`, return `null`.
-    3. Pause the video (`video.pause()`) so the user can comfortably add a note.
-    4. Create an offscreen `<canvas>`, set `canvas.width = video.videoWidth` and `canvas.height = video.videoHeight`.
-    5. Draw the video frame: `ctx.drawImage(video, 0, 0, canvas.width, canvas.height)`.
-    6. Convert to Base64: `const frameBase64 = canvas.toDataURL('image/png')`.
-    7. Read `const timestamp = Math.floor(video.currentTime)`.
-    8. Return `{ frameBase64, timestamp }`.
-  - Export helper `formatTimestamp(seconds: number): string` (e.g., `125` $\rightarrow$ `"02:05"`).
-  - Export helper `seekYouTubeVideo(seconds: number): void` which finds the `<video>` element, sets `video.currentTime = seconds`, and calls `video.play()`.
+  - Export `captureYouTubeFrame()` returning `{ ok: true; frameBase64: string; timestamp: number } | { ok: false; error: string }`:
+    1. Check if `.ad-showing` exists on `#movie_player` (`document.querySelector('.ad-showing')`). If true, return `{ ok: false, error: 'Please wait for the YouTube ad to finish before capturing.' }`.
+    2. Query `const video = document.querySelector<HTMLVideoElement>('video.html5-main-video') || document.querySelector('video')`.
+    3. If `!video || video.videoWidth === 0`, return `{ ok: false, error: 'No active video stream found.' }`.
+    4. Pause the video (`video.pause()`).
+    5. Compute target dimensions capped at `maxWidth = 1280` (preserving aspect ratio) so the Base64 payload stays small and fast (~80–150KB).
+    6. Create an offscreen `<canvas>`, wrap `ctx.drawImage(video, 0, 0, width, height)` in a `try/catch` (to catch CORS/DRM taint errors gracefully), and export `canvas.toDataURL('image/webp', 0.85)`.
+    7. Return `{ ok: true, frameBase64, timestamp: Math.floor(video.currentTime) }`.
+  - Export `formatTimestamp(seconds: number): string` (e.g., `125` $\rightarrow$ `"02:05"`).
+  - Export `seekYouTubeVideo(seconds: number): void` which sets `video.currentTime = seconds` and calls `video.play()`.
 - **Update `Sidebar.tsx`**:
-  - When the user clicks **"Capture Current Frame"**, call `captureYouTubeFrame()`.
-  - Render the captured screenshot preview thumbnail, formatted timestamp badge (`[02:05]`), an optional `"Add a quick note..."` input field, and an **"Extract Code with AI"** button.
+  - Wire **"Capture Current Frame"** to `captureYouTubeFrame()`.
+  - Display the captured WebP thumbnail preview, formatted `[MM:SS]` badge (clickable to test `seekYouTubeVideo`), a `"Quick Note"` input, an optional `"Paste/Edit Code (Optional)"` textarea, and a **"Save Snippet"** button (temporarily saving to `chrome.storage.local` until Task 6 connects the Next.js backend).
 
 ### Verification Checkpoint
-1. Rebuild/reload the extension and open any YouTube coding video.
-2. Play the video to any timestamp showing code, click **"Capture Current Frame"**, and verify the video pauses and displays the exact screenshot thumbnail and `[MM:SS]` timestamp inside the CodeFrame sidebar.
-3. **STOP and ask the user to confirm before starting Task 8.**
+
+1. Run `pnpm --filter extension build` and reload the extension in Chrome.
+2. Open a YouTube coding video, click **"Capture Current Frame"**, and verify the video pauses and displays the captured screenshot preview and `[MM:SS]` timestamp badge inside the sidebar.
+3. Save a test snippet locally, scrub the YouTube video to a different time, and click the `[MM:SS]` badge to verify the video immediately seeks back to the captured second.
+4. **STOP and ask the user to confirm before starting Task 5.**
 
 ---
 
-## Task 8: Wire Background API Messaging, AI Code Extraction & Video Seeking (`apps/extension`)
+## Task 5: Scaffold Next.js App (`apps/web`) with Pluggable Storage & AI Adapters
 
 ### Goal
-Connect the sidebar's **"Extract Code with AI"** button to `POST http://localhost:3000/api/extract` via the Background Service Worker, display the extracted code with a 1-click **Copy Code** button, and list saved snippets for the current video with clickable `[MM:SS]` seek buttons.
+
+Initialize Next.js in `apps/web` with CORS and build clean **Adapter Interfaces** for Storage and AI Extraction so the entire pipeline works immediately with zero database or API keys, while keeping the architecture 100% ready for any Database or LLM later.
 
 ### Exact Commands / Files
+
+1. Scaffold Next.js in `apps/web`:
+   ```bash
+   pnpm create next-app@latest apps/web --ts --tailwind --eslint --app --src-dir --import-alias "@/*" --use-pnpm --yes
+   ```
+2. Update `apps/web/package.json` & `apps/web/next.config.ts`
+3. Create `apps/web/src/lib/storage-adapter.ts`
+4. Create `apps/web/src/lib/ai-adapter.ts`
+5. Create `apps/web/src/app/api/health/route.ts`
+6. Create `apps/web/src/app/api/extract/route.ts`
+7. Create `apps/web/src/app/api/snippets/route.ts`
+
+### Implementation Specs
+
+- Add `"@codeframe/shared": "workspace:*"` to `apps/web/package.json` and run `pnpm install`.
+- **`apps/web/next.config.ts`**:
+  - Add `transpilePackages: ["@codeframe/shared"]`.
+  - Configure `headers()` for `/api/:path*` with `Access-Control-Allow-Origin: "*"`, `Access-Control-Allow-Methods: "GET, POST, DELETE, OPTIONS"`, and `Access-Control-Allow-Headers: "Content-Type, Authorization"`.
+- **`apps/web/src/lib/storage-adapter.ts` (Database-Agnostic Adapter)**:
+  - Define interface `StorageAdapter`:
+    - `saveSnippet(snippet: Omit<SnippetDTO, 'id' | 'createdAt'>): Promise<SnippetDTO>`
+    - `getSnippets(videoId?: string): Promise<SnippetDTO[]>`
+    - `deleteSnippet(id: string): Promise<boolean>`
+  - Implement `LocalJsonStorageAdapter` using Node `fs/promises` that reads/writes to `apps/web/.data/snippets.json` (auto-creating the `.data` folder if missing).
+  - Add a clear comment showing where Prisma/Supabase/MongoDB can be swapped in later with a 1-line export change.
+- **`apps/web/src/lib/ai-adapter.ts` (AI-Agnostic Adapter)**:
+  - Define interface `AIExtractorAdapter`:
+    - `extractFromFrame(input: { frameBase64: string; videoTitle: string; userNote?: string; manualCodeOverride?: string }): Promise<{ extractedCode: string; language: string; explanation: string }>`
+  - Implement `PlaceholderAIAdapter`:
+    - If `manualCodeOverride` is provided, use it. Otherwise return a clean placeholder snippet containing the video title and timestamp note (`// [AI Provider Not Connected Yet]\n// Frame captured from: ${videoTitle}\n// Connect Gemini, Grok, or OpenAI in apps/web/src/lib/ai-adapter.ts`) so the user can test the full workflow without needing an API key today.
+- **API Routes (`/api/health`, `/api/extract`, `/api/snippets`)**:
+  - Wire `POST /api/extract` to call `aiAdapter.extractFromFrame(...)` followed by `storageAdapter.saveSnippet(...)` and return `ExtractCodeResponse`.
+  - Wire `GET /api/snippets` to call `storageAdapter.getSnippets(videoId)` and return `GetSnippetsResponse`.
+
+### Verification Checkpoint
+
+1. Start Next.js (`pnpm --filter web dev`) and test `curl -i http://localhost:3000/api/health` and `curl http://localhost:3000/api/snippets`.
+2. Confirm both return HTTP `200 OK` with CORS headers and `{"success":true,"snippets":[]}`.
+3. **STOP and ask the user to confirm before starting Task 6.**
+
+---
+
+## Task 6: Connect Chrome Extension to Next.js API via Background Worker (`apps/extension`)
+
+### Goal
+
+Route the Chrome Extension's **"Save / Extract Snippet"** and **"Load Snippets"** actions through `background.ts` to the Next.js backend (`http://localhost:3000/api/*`) and display saved snippets inside the YouTube sidebar.
+
+### Exact Commands / Files
+
 1. Update `apps/extension/entrypoints/background.ts`
 2. Update `apps/extension/entrypoints/youtube.content/Sidebar.tsx`
 
 ### Implementation Specs
-- **Why Background Service Worker Proxy:** Content scripts running on `[https://www.youtube.com](https://www.youtube.com)` can face Mixed Content / Private Network Access restrictions when calling `http://localhost:3000`. Routing the `fetch` call through `entrypoints/background.ts` via `chrome.runtime.sendMessage` bypasses page-level restrictions cleanly.
+
 - **`apps/extension/entrypoints/background.ts`**:
-  - Listen to `chrome.runtime.onMessage.addListener((message, sender, sendResponse) => { ... return true; })`.
-  - Handle two message types:
-    1. `EXTRACT_CODE`: Calls `POST http://localhost:3000/api/extract` with `message.payload` (`ExtractCodeRequest`) and returns the JSON response.
-    2. `GET_SNIPPETS`: Calls `GET http://localhost:3000/api/snippets?videoId=${message.videoId}` and returns saved snippets for that video.
+  - Listen to `chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => { ... return true; })`.
+  - Handle `EXTRACT_CODE`: sends `POST http://localhost:3000/api/extract` with `ExtractCodeRequest` payload and returns `ExtractCodeResponse`.
+  - Handle `GET_SNIPPETS`: sends `GET http://localhost:3000/api/snippets?videoId=${message.videoId}` and returns `GetSnippetsResponse`.
 - **Update `Sidebar.tsx`**:
-  - When `videoId` changes, fetch existing snippets via `GET_SNIPPETS`.
-  - When **"Extract Code with AI"** is clicked:
-    1. Show a loading state (`"Extracting code via Gemini..."`).
-    2. Send `EXTRACT_CODE` message to background worker.
-    3. On success, prepend/insert the returned `SnippetDTO` into the sidebar's snippet list and clear the temporary capture preview.
-  - For each snippet in the sidebar:
-    1. Render a clickable timestamp button (`[02:05]`) that calls `seekYouTubeVideo(snippet.timestamp)`.
-    2. Render a **"Copy Code"** button that copies `snippet.extractedCode` to clipboard and shows `"Copied! ✓"` for 2 seconds.
-    3. Render the formatted `<pre><code>` block and Gemini's brief explanation + user note.
-    4. Include an **"Open Web Dashboard ↗"** link pointing to `http://localhost:3000/dashboard`.
+  - On video load (`videoId` change), request `GET_SNIPPETS` from the background worker and display existing snippets sorted by timestamp.
+  - When **"Save & Extract Snippet"** is clicked, send `EXTRACT_CODE` to the background worker, prepend the returned `SnippetDTO` to the list, and clear the capture form.
+  - For each snippet card in the sidebar:
+    - Render a clickable `[MM:SS]` button that calls `seekYouTubeVideo(snippet.timestamp)`.
+    - Render a **"Copy Code"** button with `"Copied! ✓"` feedback.
+    - Render a link at the bottom: **"Open Full Study Dashboard ↗"** (`http://localhost:3000/dashboard`).
 
 ### Verification Checkpoint
-1. Ensure `pnpm --filter web dev` is running on `http://localhost:3000`.
-2. Open a YouTube coding tutorial, click **"Capture Current Frame"**, type a short note, and click **"Extract Code with AI"**.
-3. Verify the extracted code appears in the sidebar within ~3 seconds, click **"Copy Code"** to test clipboard copy, scrub the YouTube video elsewhere, and click the `[MM:SS]` badge to verify the video jumps back to that exact second.
-4. **STOP and ask the user to confirm before starting Task 9.**
+
+1. Ensure `pnpm --filter web dev` is running on `http://localhost:3000` and rebuild the extension (`pnpm --filter extension build`).
+2. Capture a frame on YouTube, add a quick note, and click **"Save & Extract Snippet"**.
+3. Confirm the snippet appears in the sidebar, persists when you refresh the YouTube page, and saves inside `apps/web/.data/snippets.json`.
+4. **STOP and ask the user to confirm before starting Task 7.**
 
 ---
 
-## Task 9: Build the Next.js Web Study Dashboard (`apps/web`)
+## Task 7: Build the Next.js Web Study Dashboard with Search (`apps/web`)
 
 ### Goal
-Build the Next.js web dashboard (`/dashboard`) where users can search all their saved YouTube code snippets, view grouped study notes by video, copy code, or click a timestamp to open the YouTube video at that exact second.
+
+Build the `/dashboard` page in Next.js where users can view their captured YouTube screenshots, notes, and code snippets grouped by video, filter them via a live search bar, and jump back to the exact YouTube timestamp in one click.
 
 ### Exact Commands / Files
+
 1. Create `apps/web/src/components/SnippetCard.tsx`
-2. Create `apps/web/src/app/dashboard/page.tsx`
-3. Update `apps/web/src/app/page.tsx` (redirect or link cleanly to `/dashboard`)
+2. Create `apps/web/src/components/DashboardClient.tsx`
+3. Create `apps/web/src/app/dashboard/page.tsx`
+4. Update `apps/web/src/app/page.tsx` (redirect or link cleanly to `/dashboard`)
 
 ### Implementation Specs
+
 - **`apps/web/src/components/SnippetCard.tsx`** (`"use client"`):
-  - Props: `snippet: SnippetDTO`.
-  - Displays language badge, formatted timestamp link (`${snippet.videoUrl}&t=${snippet.timestamp}s` opening in a new tab), user note, AI explanation, dark-themed `<pre><code>` viewer, and a working **"Copy Snippet"** button.
+  - Displays the captured video frame thumbnail (`frameBase64` if present), language badge, clickable timestamp badge linking to `${snippet.videoUrl}&t=${snippet.timestamp}s`, user note, explanation, dark-themed `<pre><code>` block, and a **"Copy Snippet"** button.
+- **`apps/web/src/components/DashboardClient.tsx`** (`"use client"`):
+  - Accepts `initialSnippets: SnippetDTO[]`.
+  - Includes a search input that filters snippets in real time by `videoTitle`, `userNote`, `extractedCode`, or `language`.
+  - Groups matching snippets by `videoId` so each YouTube tutorial appears as a structured study card with all its captured timestamps in chronological order.
 - **`apps/web/src/app/dashboard/page.tsx`**:
-  - Server Component (with `export const dynamic = "force-dynamic"`).
-  - Queries all snippets via `prisma.snippet.findMany({ orderBy: { createdAt: "desc" } })`.
-  - Groups snippets by `videoId` so each YouTube video renders as a clean study module header showing the video title, total snippets captured, and a grid/list of `SnippetCard` components ordered by timestamp.
-  - Includes a clean empty state explaining how to capture the first snippet from YouTube using the Chrome Extension.
+  - Server Component (`export const dynamic = "force-dynamic"`).
+  - Loads snippets via `storageAdapter.getSnippets()` and renders `<DashboardClient initialSnippets="{snippets}"/>`.
 
 ### Verification Checkpoint
+
 1. Open `http://localhost:3000/dashboard` in Chrome.
-2. Confirm all snippets captured from the YouTube extension are displayed, grouped by YouTube video title.
-3. Click the **"Copy Snippet"** button and click the `[MM:SS]` link to confirm it opens YouTube at that exact timestamp (`&t=Xs`).
-4. **Report MVP completion to the user.**
+2. Verify all snippets captured from the YouTube extension appear grouped by video, including their captured frame thumbnails, notes, code blocks, and working search bar.
+3. Click any `[MM:SS]` timestamp link on the dashboard and confirm it opens the YouTube video at that exact second.
+4. **Report Phase 1 Prototype completion to the user, Ready for Phase 2 (choosing Database & AI provider).**
