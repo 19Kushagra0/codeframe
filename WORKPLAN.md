@@ -1,187 +1,203 @@
-# CodeFrame MVP — Project Workplan (`WORKPLAN.md`)
+# CodeFrame MVP — Learn-by-Building Workplan (`WORKPLAN.md`)
 
-> **What we are building:** A Chrome Extension that lets you pause any YouTube coding tutorial, grab a screenshot + timestamp + note, and save/search those code snippets in a clean Study Dashboard website.
+> **What we are building:** A Chrome Extension that lets you pause any YouTube coding video, capture a screenshot + timestamp + note, and review/search everything in a clean Study Dashboard website.
 >
-> **How Phase 1 works:** We build the Chrome Extension first and connect it to a local Next.js backend that saves snippets into a simple JSON file (`.data/snippets.json`) with a placeholder AI extractor. That way, the whole app works end-to-end without needing a database or API keys yet.
+> **How we will build it (UI $\rightarrow$ Functionality $\rightarrow$ API):**
+> 1. **UI First:** Build the Popup UI, then the YouTube Sidebar UI so you can *see* it right away.
+> 2. **One Feature at a Time:** Grab **just the video image** first, then add timestamps, seeking, and notes.
+> 3. **Backend & Background Relay Last:** Build the Next.js API, then connect `Content` $\rightarrow$ `Background` $\rightarrow$ `Next.js` and watch the data travel across all 3 consoles!
+> 4. **Logs & Guided Checks at Every Step:** Every task includes clear `console.log(...)` messages and step-by-step instructions telling you where to click and which console to open so you understand *how* it works under the hood.
 
 ---
 
 ## 📊 Quick Progress Tracker
 
-- [x] **Task 1:** Clean up starter repo & create shared data types (`packages/shared`)
-- [ ] **Task 2:** Create the base Chrome Extension (`apps/extension`)
-- [ ] **Task 3:** Show a floating CodeFrame sidebar on YouTube videos
-- [ ] **Task 4:** Capture video screenshots, skip ads & jump to saved timestamps
-- [ ] **Task 5:** Set up the Next.js backend API, local file saving & placeholder AI (`apps/web`)
-- [ ] **Task 6:** Connect the YouTube sidebar to the Next.js backend
-- [ ] **Task 7:** Build the searchable Study Dashboard webpage (`apps/web`)
+- [x] **Task 1:** Shared data types (`packages/shared`) & `.gitignore`
+- [ ] **Task 2:** Extension setup + **Popup UI** + Popup Console logs (`apps/extension`)
+- [ ] **Task 3:** YouTube **Sidebar UI** (Content Script + Shadow DOM) (`apps/extension`)
+- [ ] **Task 4:** Grab **just the video screenshot image** + preview & logs (`apps/extension`)
+- [ ] **Task 5:** Add **timestamp, video seek, ad-guard & notes** (`apps/extension`)
+- [ ] **Task 6:** Build the **Next.js Backend API**, local JSON storage & placeholder AI (`apps/web`)
+- [ ] **Task 7:** Connect **Content $\rightarrow$ Background $\rightarrow$ Next.js API** & watch the live relay (`apps/extension`)
+- [ ] **Task 8:** Build the searchable **Study Dashboard** website (`apps/web`)
 
 ---
 
 ## 🧭 Big Picture Map
 
 ```text
-codeframe/
-├── apps/
-│   ├── web/        ──► Next.js app (Study Dashboard website + Backend API)
-│   └── extension/  ──► Chrome Extension (runs inside YouTube video pages)
-└── packages/
-    ├── shared/     ──► Shared TypeScript data shapes (so Extension & Web match)
-    ├── ui/         ──► Starter shared React components
-    ├── typescript-config/ & eslint-config/  ──► Shared code rules
+  Extension (Built in Tasks 2-5 & 7)                Next.js Web App (Tasks 6 & 8)
+  ──────────────────────────────────                ─────────────────────────────
+  1. popup/        ──► Toolbar mini-UI              apps/web/
+  2. youtube.content/ ─► YouTube Sidebar + Capture  ├── app/api/*    (Backend API + .data JSON)
+  3. background.ts ──► Safe API middleman ─────────►└── app/dashboard (Study Dashboard UI)
+
+  Both share the exact same TypeScript types from:  packages/shared/
 ```
 
 ---
 
 ## 🚦 Rules for Building (Read First)
 
-1. **One task at a time:** Only work on the current task—never jump ahead to the next task.
-2. **Real, complete code only:** No placeholders or half-finished TypeScript files.
-3. **Always verify & stop:** At the end of each task, run the check, show the results, tick the completed boxes in this file, and **wait for your approval** (`"Next task"` or `"Approved"`) before moving on.
-4. **Never wipe existing files:** Append or update cleanly (like `.gitignore` and `package.json`).
+1. **One task at a time:** Execute **only one task** per turn—never jump ahead.
+2. **Explain & log everything:** Include clean, readable `console.log` tags (`[CodeFrame Popup]`, `[CodeFrame Content]`, `[CodeFrame Background]`, `[CodeFrame API]`) so you can watch data move step by step.
+3. **Guided verification & stop:** At the end of every task, run the build/type check, tick the completed checkboxes here, give clear **"Try It Yourself"** steps telling you what to click and where to look, and **STOP** until you reply `"Next task"` or `"Approved"`.
+4. **Never wipe existing files:** Edit or append cleanly (`.gitignore`, `package.json`, existing `apps/web`).
 
 ---
 
-## ✅ Task 1: Clean Up Starter Repo & Create Shared Types (`packages/shared`)
+## ✅ Task 1: Shared Types Package (`packages/shared`) & `.gitignore`
 
-**In plain words:** Remove the unused `docs` demo app, tell Git to ignore build/data folders, and create a shared folder (`@codeframe/shared`) that defines the exact shape of a captured snippet so the extension and website speak the same language.
+**What you learned:** Why monorepos keep shared TypeScript interfaces (`ExtractCodeRequest`, `SnippetDTO`, `ExtractCodeResponse`, `GetSnippetsResponse`) in one place so both the Extension and Next.js agree on exact field names.
 
 ### Checklist
-- [x] Delete the unused `apps/docs` starter folder (keep `apps/web` and `packages/*`)
-- [x] Append `.wxt`, `.output`, and `.data` to `.gitignore` without erasing existing entries
-- [x] Create `packages/shared/package.json` (`@codeframe/shared`, with `"check-types": "tsc --noEmit"`)
-- [x] Create `packages/shared/tsconfig.json` (extending `@repo/typescript-config/base.json`)
-- [x] Create `packages/shared/src/index.ts` with our 4 shared TypeScript types:
-  - `ExtractCodeRequest` (`videoId`, `videoUrl`, `videoTitle`, `timestamp`, `frameBase64`, optional `userNote` & `manualCodeOverride`)
-  - `SnippetDTO` (`id`, `videoId`, `videoUrl`, `videoTitle`, `timestamp`, optional `frameBase64`, `extractedCode`, `language`, `explanation`, `userNote`, `createdAt`)
-  - `ExtractCodeResponse` (`success`, optional `snippet` & `error`)
-  - `GetSnippetsResponse` (`success`, `snippets`, optional `error`)
-- [x] Run `pnpm install` at the root to link `@codeframe/shared`
-
-### Verification
-- [x] Run `pnpm --filter @codeframe/shared check-types` and `pnpm check-types` $\rightarrow$ both passed with `0` errors.
+- [x] Append `.wxt`, `.output`, and `.data` to root `.gitignore`
+- [x] Create `packages/shared/package.json`, `tsconfig.json`, and `src/index.ts` (with plain-English comments above each interface)
+- [x] Run `pnpm install` and verify `pnpm --filter @codeframe/shared check-types` passes with `0` errors
 
 ---
 
-## ⬜ Task 2: Create the Base Chrome Extension (`apps/extension`)
+## ⬜ Task 2: Extension Setup & Popup UI (`apps/extension` — Step 1: Popup)
 
-**In plain words:** Set up the Chrome Extension skeleton using the **WXT** framework (Manifest V3) with React, TypeScript, Tailwind CSS, a background script, and a simple popup menu.
+**What you'll learn:** How the **Popup** UI works, how Tailwind CSS styles a Chrome extension, how permissions work in `wxt.config.ts`, and how to watch logs in the **Popup Console**.
 
 ### Checklist
-- [ ] Create `apps/extension/package.json` (`name: "extension"`, React 19, `lucide-react`, `@codeframe/shared`, `wxt`, `@wxt-dev/module-react`, Tailwind v3, `"check-types": "tsc --noEmit"`, `"postinstall": "wxt prepare"`)
-- [ ] Create `apps/extension/tsconfig.json`, `tailwind.config.js`, and `postcss.config.js`
-- [ ] Create `apps/extension/wxt.config.ts`:
-  - Permissions: `["activeTab", "storage"]`
-  - Host permissions: `["*://*.youtube.com/*", "http://localhost:3000/*"]`
-- [ ] Create `apps/extension/entrypoints/background.ts` (basic `defineBackground` setup)
-- [ ] Create `apps/extension/entrypoints/popup/index.html` & `main.tsx` (status + quick button to open `http://localhost:3000/dashboard`)
-- [ ] Run `pnpm install`
+- [x] Initialize WXT React + TypeScript starter inside `apps/extension` *(done by you!)*
+- [ ] Rename package in `apps/extension/package.json` from `"wxt-react-starter"` to `"extension"`, add `"check-types": "tsc --noEmit"`, and install `tailwindcss`, `postcss`, `autoprefixer`, `lucide-react`, and `@codeframe/shared`
+- [ ] Configure Tailwind (`tailwind.config.js`, `postcss.config.js`) and update `wxt.config.ts` with CodeFrame's name and permissions (`activeTab`, `storage`, `*://*.youtube.com/*`, `http://localhost:3000/*`)
+- [ ] Build CodeFrame's clean dark-mode **Popup UI** (`entrypoints/popup/App.tsx`):
+  - Shows extension title/status, a link to open `http://localhost:3000/dashboard`, and a quick **"Test Popup Log"** button that prints `console.log('[CodeFrame Popup] ...')`
+- [ ] Run `pnpm install` and `pnpm --filter extension build`
 
-### Verification
-- [ ] Run `pnpm --filter extension build` and confirm `apps/extension/.output/chrome-mv3/manifest.json` builds with zero errors.
+### Try It Yourself & Verify
+- [ ] Run `pnpm --filter extension dev` and click the extension icon in Chrome
+- [ ] Right-click inside the popup $\rightarrow$ **Inspect** $\rightarrow$ **Console** tab
+- [ ] Click the button and watch `[CodeFrame Popup]` print live!
 - [ ] **STOP and wait for your approval before Task 3.**
 
 ---
 
-## ⬜ Task 3: Add the Floating CodeFrame Sidebar to YouTube (`apps/extension`)
+## ⬜ Task 3: Floating Sidebar UI on YouTube (`apps/extension` — Step 2: Content UI)
 
-**In plain words:** Show a floating **CodeFrame ⚡** button on YouTube video pages that opens a dark-mode sidebar. Using a **Shadow DOM** keeps YouTube's styles from breaking our buttons and layout.
+**What you'll learn:** How a **Content Script** injects a React sidebar onto YouTube inside a **Shadow DOM** (so YouTube's CSS can't mess up our styles) and detects YouTube video switches without a page reload (`yt-navigate-finish`).
 
 ### Checklist
-- [ ] Create `apps/extension/entrypoints/youtube.content/style.css` with Tailwind directives
-- [ ] Create `apps/extension/entrypoints/youtube.content/index.tsx` matching `*://*.youtube.com/*` using `createShadowRootUi` (`cssInjectionMode: 'ui'`)
-- [ ] Create `apps/extension/entrypoints/youtube.content/Sidebar.tsx`:
-  - Show only when on a `/watch` page with a valid `v` video ID
-  - Cleanly build the canonical URL (`https://www.youtube.com/watch?v=${videoId}`)
-  - Read the video title from YouTube's page header (with tab-title fallback)
-  - Auto-update when clicking to another video (`yt-navigate-finish` & `popstate`)
-  - Render a collapsible right-side drawer (`w-[380px]`) with video title, ID badge, and a **"Capture Current Frame"** button
+- [ ] Replace starter `entrypoints/content.ts` with `entrypoints/youtube.content/` (`style.css`, `Sidebar.tsx`, `index.tsx`)
+- [ ] Match `*://*.youtube.com/*` using WXT's `createShadowRootUi` (`cssInjectionMode: 'ui'`)
+- [ ] Build `Sidebar.tsx`:
+  - Only appear on `/watch?v=...` pages (hides cleanly on the YouTube homepage)
+  - Floating toggle button (`CodeFrame ⚡`) + sleek collapsible dark-mode drawer (`fixed top-16 right-4 z-[9999] w-[380px]`)
+  - Read canonical URL (`https://www.youtube.com/watch?v=${videoId}`) and video title (header DOM element with tab-title fallback)
+  - Listen for `yt-navigate-finish` & `popstate` so clicking another video updates the sidebar automatically
+  - Log `[CodeFrame Content] Active video changed:` with `{ videoId, videoTitle, videoUrl }` and log when the **"Capture Current Frame"** button is clicked
 
-### Verification
-- [ ] Build with `pnpm --filter extension build`
-- [ ] Load `apps/extension/.output/chrome-mv3` in Chrome (`chrome://extensions` $\rightarrow$ Developer mode $\rightarrow$ Load unpacked)
-- [ ] Open a YouTube video, toggle **CodeFrame ⚡**, click another video, and confirm the title & ID update.
+### Try It Yourself & Verify
+- [ ] Run `pnpm --filter extension build` (or watch it auto-reload in `dev`)
+- [ ] Open any YouTube video, press `F12` $\rightarrow$ **Console** tab
+- [ ] Watch `[CodeFrame Content]` log the video title and ID, click **CodeFrame ⚡** to open/close the sidebar, then click another YouTube video and watch the sidebar & Console log update live!
 - [ ] **STOP and wait for your approval before Task 4.**
 
 ---
 
-## ⬜ Task 4: Capture Video Screenshots, Skip Ads & Jump to Timestamps (`apps/extension`)
+## ⬜ Task 4: Grab Just the Video Screenshot (`apps/extension` — Step 3: One Data Piece First)
 
-**In plain words:** Make the **"Capture Current Frame"** button pause the YouTube video, grab a lightweight screenshot + exact timestamp, block captures during ads, and let you click any saved `[MM:SS]` badge to jump the video right back to that second.
+**What you'll learn:** How JavaScript grabs a single image out of YouTube's `<video>` player using an invisible HTML5 `<canvas>`, shrinks it so it's fast (~80–150 KB WebP), and displays that image right inside your sidebar.
 
 ### Checklist
-- [ ] Create `apps/extension/src/utils/captureFrame.ts`:
-  - `captureYouTubeFrame()`:
-    - Block with a friendly message if a YouTube ad is playing (`.ad-showing`)
-    - Find the `<video>`, pause it, resize down to max width `1280px` (to keep payload ~80–150 KB), draw to an offscreen `<canvas>` inside `try/catch`, and export WebP (`image/webp`, quality `0.85`)
-    - Return `{ ok: true, frameBase64, timestamp }` or `{ ok: false, error }`
-  - `formatTimestamp(seconds)` (e.g., `125` $\rightarrow$ `"02:05"`)
-  - `seekYouTubeVideo(seconds)` (jumps video to `seconds` and plays)
+- [ ] Create `apps/extension/src/utils/captureFrame.ts` focused first on capturing the frame:
+  - Block cleanly if a YouTube ad is playing (`.ad-showing`)
+  - Find the `<video>` element and pause it (`video.pause()`)
+  - Resize down to max width `1280px` (preserving aspect ratio)
+  - Draw to an offscreen `<canvas>` inside `try/catch` and export `canvas.toDataURL('image/webp', 0.85)`
+  - Log `[CodeFrame Capture] Frame captured:` with `{ width, height, sizeKB, preview: frameBase64.slice(0, 45) }`
 - [ ] Update `Sidebar.tsx`:
-  - Show the captured thumbnail preview, clickable `[MM:SS]` badge, `"Quick Note"` input, optional `"Paste/Edit Code"` box, and **"Save Snippet"** button (saved temporarily in `chrome.storage.local` until Task 6)
+  - Wire **"Capture Current Frame"** to `captureYouTubeFrame()`
+  - Display the captured screenshot preview image (and clear/retake button) right in the sidebar
 
-### Verification
-- [ ] Rebuild & reload the extension in Chrome
-- [ ] Capture a frame on any YouTube video $\rightarrow$ confirm it pauses and shows the thumbnail + `[MM:SS]` badge
-- [ ] Save a test snippet, scrub the video somewhere else, and click `[MM:SS]` to confirm it jumps right back.
+### Try It Yourself & Verify
+- [ ] Open a YouTube coding video and press `F12` $\rightarrow$ **Console**
+- [ ] Click **"Capture Current Frame"** $\rightarrow$ confirm the video pauses, the exact frozen frame appears inside the sidebar, and `[CodeFrame Capture]` prints the image width, height, and KB size in the Console!
 - [ ] **STOP and wait for your approval before Task 5.**
 
 ---
 
-## ⬜ Task 5: Wire Up Next.js Backend, Local File Storage & Placeholder AI (`apps/web`)
+## ⬜ Task 5: Timestamps, Video Seek & Notes (`apps/extension` — Step 4: Full Sidebar Functionality)
 
-**In plain words:** Prepare our existing `apps/web` Next.js app so the extension can send captures to it. Instead of locking into one database or AI provider right now, we create swappable **adapters** that save to a local JSON file (`.data/snippets.json`) and use a placeholder extractor until you pick your DB and AI later.
+**What you'll learn:** How to read `video.currentTime`, jump YouTube back to any saved second, and temporarily save cards in `chrome.storage.local` so you can test the whole sidebar UX before wiring up the backend.
 
 ### Checklist
-- [ ] Install `@codeframe/shared` and Tailwind CSS (`tailwindcss`, `@tailwindcss/postcss`, `postcss`) in `apps/web`
-- [ ] Configure `apps/web/postcss.config.mjs` and update `apps/web/app/globals.css` with Tailwind
-- [ ] Update `apps/web/next.config.js` (`transpilePackages: ["@codeframe/shared"]` + CORS headers for `/api/:path*`) and `apps/web/tsconfig.json` (`@/*` path alias if needed)
-- [ ] Create `apps/web/lib/storage-adapter.ts` (`StorageAdapter` interface + `LocalJsonStorageAdapter` saving to `apps/web/.data/snippets.json`)
-- [ ] Create `apps/web/lib/ai-adapter.ts` (`AIExtractorAdapter` interface + `PlaceholderAIAdapter` supporting `manualCodeOverride` or returning a clean placeholder block)
-- [ ] Create API routes inside `apps/web/app/api/`:
-  - `health/route.ts` (`GET` + `OPTIONS`)
-  - `extract/route.ts` (`POST` + `OPTIONS` $\rightarrow$ runs AI adapter $\rightarrow$ saves via Storage adapter)
-  - `snippets/route.ts` (`GET` with `force-dynamic` + `OPTIONS` $\rightarrow$ returns saved snippets, filterable by `?videoId=`)
+- [ ] Add `formatTimestamp(seconds)` (e.g., `125` $\rightarrow$ `"02:05"`) and `seekYouTubeVideo(seconds)` (sets `video.currentTime` & plays + logs `[CodeFrame Seek]`) to `captureFrame.ts`
+- [ ] Update `Sidebar.tsx`:
+  - Show the formatted `[MM:SS]` timestamp badge next to the captured screenshot
+  - Add a `"Quick Note"` input, optional `"Paste/Edit Code"` textarea, and **"Save Snippet"** button
+  - Temporarily store saved cards in `chrome.storage.local` (logging `[CodeFrame Storage] Saved locally:` with the snippet object)
+  - Render saved cards for the current video with clickable `[MM:SS]` buttons that jump the YouTube player straight back to that second
 
-### Verification
-- [ ] Start `pnpm --filter web dev`
-- [ ] Confirm `http://localhost:3000/api/health` and `http://localhost:3000/api/snippets` both return HTTP `200 OK` with CORS headers.
+### Try It Yourself & Verify
+- [ ] Capture a frame on YouTube, type a quick note, and click **"Save Snippet"**
+- [ ] Scrub the YouTube video to a totally different time
+- [ ] Click your saved `[MM:SS]` badge $\rightarrow$ watch YouTube jump right back to that second and check `[CodeFrame Seek]` in the Console!
 - [ ] **STOP and wait for your approval before Task 6.**
 
 ---
 
-## ⬜ Task 6: Connect the YouTube Sidebar to the Next.js Backend (`apps/extension`)
+## ⬜ Task 6: Next.js Backend API, Local File Save & Mock AI (`apps/web` — Step 5: The Server)
 
-**In plain words:** Replace the extension's temporary local storage with real API calls to `http://localhost:3000/api/*`. Routing requests through `background.ts` prevents Chrome from blocking `https://youtube.com` talking to `http://localhost:3000`.
+**What you'll learn:** How Next.js API routes handle HTTP requests, why CORS headers are needed, and how **Adapters** let us save to a simple JSON file (`.data/snippets.json`) and mock AI now so we can plug in any real DB or AI later in 1 line.
 
 ### Checklist
-- [ ] Update `apps/extension/entrypoints/background.ts` to handle `EXTRACT_CODE` (`POST /api/extract`) and `GET_SNIPPETS` (`GET /api/snippets?videoId=...`)
-- [ ] Update `apps/extension/entrypoints/youtube.content/Sidebar.tsx`:
-  - Remove Task 4's temporary `chrome.storage.local` storage so snippets live in one place
-  - Load saved snippets automatically when opening or switching YouTube videos
-  - Send captures through **"Save & Extract Snippet"** and prepend the saved snippet to the list
-  - Show clickable `[MM:SS]` seek buttons, **"Copy Code"** (`"Copied! ✓"`), and an **"Open Full Study Dashboard ↗"** link
+- [ ] Inside our **existing** `apps/web` (no `create-next-app`), install `@codeframe/shared` and Tailwind CSS (`tailwindcss`, `@tailwindcss/postcss`, `postcss`)
+- [ ] Configure `apps/web/postcss.config.mjs`, `apps/web/app/globals.css`, `apps/web/tsconfig.json` (`@/*` alias), and `apps/web/next.config.js` (`transpilePackages: ["@codeframe/shared"]` + CORS headers for `/api/:path*`)
+- [ ] Create `apps/web/lib/storage-adapter.ts` (`StorageAdapter` interface + `LocalJsonStorageAdapter` saving to `apps/web/.data/snippets.json`, logging `[CodeFrame Storage]` in the terminal)
+- [ ] Create `apps/web/lib/ai-adapter.ts` (`AIExtractorAdapter` interface + `PlaceholderAIAdapter` supporting `manualCodeOverride`, logging `[CodeFrame AI]` in the terminal)
+- [ ] Create API routes in `apps/web/app/api/`:
+  - `health/route.ts` (`GET` + `OPTIONS`)
+  - `extract/route.ts` (`POST` + `OPTIONS` $\rightarrow$ logs incoming capture, runs AI adapter, saves via Storage adapter)
+  - `snippets/route.ts` (`GET` with `force-dynamic` + `OPTIONS` $\rightarrow$ returns saved snippets, filterable by `?videoId=`)
 
-### Verification
-- [ ] Run `pnpm --filter web dev`, rebuild & reload the extension
-- [ ] Capture a frame with a note on YouTube and click **"Save & Extract Snippet"**
-- [ ] Refresh the YouTube page and verify the snippet stays visible and is saved in `apps/web/.data/snippets.json`.
+### Try It Yourself & Verify
+- [ ] Start `pnpm --filter web dev`
+- [ ] Open `http://localhost:3000/api/health` and `http://localhost:3000/api/snippets` in your browser (or `curl`)
+- [ ] Confirm both return `200 OK` JSON and watch `[CodeFrame API]` print in your VS Code terminal!
 - [ ] **STOP and wait for your approval before Task 7.**
 
 ---
 
-## ⬜ Task 7: Build the Searchable Study Dashboard (`apps/web`)
+## ⬜ Task 7: Connect Content $\rightarrow$ Background $\rightarrow$ Next.js API (`apps/extension` — Step 6: Background Relay)
 
-**In plain words:** Build the `/dashboard` webpage where all your saved YouTube screenshots, notes, and code blocks are grouped by video, searchable in real time, and linked straight back to the exact second in each video.
+**What you'll learn:** Seeing all 3 pieces talk together! Why `content` sends the screenshot to `background.ts`, and how `background.ts` forwards it safely to `http://localhost:3000/api/*` and sends the saved card back.
 
 ### Checklist
-- [ ] Create `apps/web/components/SnippetCard.tsx` (shows screenshot thumbnail, language badge, clickable `[MM:SS]` YouTube timestamp link, user note, explanation, dark code block, and **"Copy Snippet"** button)
-- [ ] Create `apps/web/components/DashboardClient.tsx` (live search bar filtering by title, note, code, or language + snippets grouped by video in timestamp order)
-- [ ] Create `apps/web/app/dashboard/page.tsx` (`force-dynamic` server page loading snippets from `storageAdapter.getSnippets()` into `<DashboardClient initialSnippets={snippets} />`)
+- [ ] Update `apps/extension/entrypoints/background.ts`:
+  - Listen for `EXTRACT_CODE` (`POST http://localhost:3000/api/extract`) and `GET_SNIPPETS` (`GET http://localhost:3000/api/snippets?videoId=...`)
+  - Log `[CodeFrame Background] Received message:` and `[CodeFrame Background] Backend replied:` so you can watch the relay live in the Service Worker Console
+- [ ] Update `Sidebar.tsx`:
+  - Replace Task 5's temporary `chrome.storage.local` storage with `chrome.runtime.sendMessage(...)` calls to `background.ts`
+  - Auto-load existing snippets whenever you open or switch YouTube videos
+  - Add a **"Copy Code"** button (`"Copied! ✓"`) and an **"Open Full Study Dashboard ↗"** link (`http://localhost:3000/dashboard`)
+
+### Try It Yourself & Verify (Watch all 3 Consoles Light Up!)
+- [ ] Run `pnpm dev` so **both** `web` (`localhost:3000`) and `extension` are running
+- [ ] Open the **YouTube Tab Console** (`F12`), the **Service Worker Console** (`chrome://extensions` $\rightarrow$ `service worker`), and look at your **VS Code Terminal**
+- [ ] Capture a frame on YouTube, add a note, and click **"Save & Extract Snippet"** $\rightarrow$ watch the message hop:
+  `YouTube Console` $\rightarrow$ `Service Worker Console` $\rightarrow$ `VS Code Terminal (Next.js)` $\rightarrow$ saved inside `apps/web/.data/snippets.json`!
+- [ ] Refresh YouTube and verify your saved snippet reloads automatically.
+- [ ] **STOP and wait for your approval before Task 8.**
+
+---
+
+## ⬜ Task 8: Build the Searchable Study Dashboard (`apps/web` — Step 7: Web UI)
+
+**What you'll learn:** How a Next.js Server Component loads saved snippets from our storage adapter and hands them to an interactive Client Component with live search, video grouping, copy buttons, and timestamp jump links.
+
+### Checklist
+- [ ] Create `apps/web/components/SnippetCard.tsx` (captured frame thumbnail, language badge, clickable `[MM:SS]` YouTube link `${videoUrl}&t=${timestamp}s`, note, explanation, dark `<pre><code>` viewer, **"Copy Snippet"** button)
+- [ ] Create `apps/web/components/DashboardClient.tsx` (live search bar filtering by title, note, code, or language + snippets grouped by video in chronological order)
+- [ ] Create `apps/web/app/dashboard/page.tsx` (`force-dynamic` Server Component loading snippets via `storageAdapter.getSnippets()` into `<DashboardClient initialSnippets={snippets} />`)
 - [ ] Update `apps/web/app/page.tsx` to redirect or link cleanly to `/dashboard`
 
-### Verification
+### Try It Yourself & Verify
 - [ ] Open `http://localhost:3000/dashboard` in Chrome
-- [ ] Confirm captured snippets appear grouped by video with thumbnails, notes, code blocks, and live search working
-- [ ] Click a `[MM:SS]` link and confirm YouTube opens at that exact second (`&t=Xs`).
-- [ ] **Phase 1 Prototype Complete — ready for Phase 2 (choosing Database & AI provider).**
+- [ ] Confirm your captured YouTube screenshots, notes, and code blocks appear grouped by video
+- [ ] Type into the search bar to test live filtering, click **"Copy Snippet"**, and click any `[MM:SS]` link to jump straight to that exact second on YouTube!
+- [ ] **Phase 1 Complete — ready for Phase 2 (choosing your real Database & AI provider)!**
