@@ -1,159 +1,78 @@
-# Turborepo starter
+# CodeFrame — Guided Learning & Build Guide (`README.md`)
 
-This Turborepo starter is maintained by the Turborepo core team.
+> **What this file is for:** This holds our **Learn-by-Building Rules** and our **Live Bookmark** so we always teach, build, and pause/resume in the exact same way. *(For the task checklist itself, see [WORKPLAN.md](./WORKPLAN.md).)*
 
-## Using this example
+---
 
-Run the following command:
+## 📍 Current Bookmark (Where We Are Right Now)
 
-```sh
-npx create-turbo@latest
-```
+- **Active Task:** Task 2 — Extension Setup & Popup UI (`apps/extension`)
+- **Exact Spot:** Ready to start **Task 2, Round 1** (setting up Tailwind/icons + our first *"I Show One $\rightarrow$ You Do One"* exercise in `entrypoints/popup/App.tsx`)
+- **Last Completed:** Task 1 (`packages/shared` shared types) + initialized WXT starter in `apps/extension`
 
-## What's inside?
+---
+
+## 🎓 How We Learn & Build Together (Core Protocol)
+
+### 1. Speak Like a Human
+- Explain one idea at a time in plain, everyday English.
+- Use simple visual diagrams (`──►`) instead of dumping long lists of filenames or code tags.
+- Always state clearly what was added, changed, or removed so it's easy to track.
+
+### 2. Never Build Everything at Once (Tiny Building Blocks)
+- Don't dump a finished complex file all at once, and never ask you to write code with zero reference.
+- Break every feature into small steps that build on each other (for example: *first log a plain message $\rightarrow$ next log a variable $\rightarrow$ finally combine values and log the result*).
+
+### 3. The "I Show One $\rightarrow$ You Do One $\rightarrow$ We Test" Loop
+For every code feature in the project:
+1. **I Show One:** I write or show **one tiny working piece** (for example, importing one icon or adding one button/log) and explain how it works in plain words.
+2. **You Do One:** You write the **next small piece** yourself using my example right above yours as a reference.
+3. **We Test Live:** I give you the exact click + Console check in Chrome to see your code working. If anything fails or shows an error, I read your file, explain why, and help you fix it.
+
+### 4. The `📍 Bookmark` Rule for Side Questions
+Whenever you pause to ask a question (*"Wait, what does that line do?"* or *"Why do we do it this way?"*):
+1. We save our exact stopping point in **`📍 Current Bookmark`** at the top of this file (and note it in chat).
+2. We explore and answer your question completely.
+3. When you're ready to continue, I read the bookmark and your current code/logs so we pick up from the exact line where we left off.
+
+---
+
+## 📝 Reusable Guided-Learning Prompt
+
+> *"Switch to Guided Learning Mode for this project: don't build whole files for me all at once, and don't ask me to code from scratch with zero reference. Break each project feature into tiny building blocks using an **'I Show One $\rightarrow$ You Do One $\rightarrow$ We Test'** loop (for example, you import one icon or write one log and explain it simply, then I add the next one and test it in the Console). Whenever I ask a side question, save a **Bookmark** of where we paused, answer my question in plain human language, and then use the bookmark and my code/logs to resume from that exact spot."*
+
+---
+
+## ⚡ Quick Project Commands (Run from `codeframe/`)
+
+- **Install / link all packages:** `pnpm install`
+- **Run everything together (Web + Extension):** `pnpm dev`
+- **Run only the Website (`localhost:3000`):** `pnpm --filter web dev`
+- **Run only the Chrome Extension:** `pnpm --filter wxt-react-starter dev` *(will become `pnpm --filter extension dev` in Task 2)*
+- **Check TypeScript across everything:** `pnpm check-types`
+
+---
+
+<details>
+<summary><strong>Original Turborepo Starter Notes (Reference)</strong></summary>
 
 This Turborepo includes the following packages/apps:
 
 ### Apps and Packages
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `@next/eslint-plugin-next` and `eslint-config-prettier`)
+- `web`: a [Next.js](https://nextjs.org/) app
+- `extension`: a [WXT](https://wxt.dev/) Chrome Extension
+- `@codeframe/shared`: shared TypeScript types across `web` and `extension`
+- `@repo/ui`: a stub React component library
+- `@repo/eslint-config`: `eslint` configurations
 - `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
-
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+### Build & Develop
 
 ```sh
-cd my-turborepo
-turbo build
+pnpm build
+pnpm dev
+pnpm check-types
 ```
 
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo build
-pnpm exec turbo build
-pnpm exec turbo build
-```
-
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo build --filter=docs
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-```
-
-### Develop
-
-To develop all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo dev
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo dev
-pnpm exec turbo dev
-pnpm exec turbo dev
-```
-
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo dev --filter=web
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-```
-
-### Remote Caching
-
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo login
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo login
-pnpm exec turbo login
-pnpm exec turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo link
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo link
-pnpm exec turbo link
-pnpm exec turbo link
-```
-
-## Useful Links
-
-Learn more about the power of Turborepo:
-
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+</details>
