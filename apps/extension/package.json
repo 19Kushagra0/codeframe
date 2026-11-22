@@ -1,8 +1,8 @@
 {
-  "name": "wxt-react-starter",
-  "version": "0.0.0",
+  "name": "extension",
+  "version": "0.1.0",
   "private": true,
-  "description": "manifest.json description",
+  "description": "CodeFrame — YouTube Study & Code Extractor",
   "type": "module",
   "scripts": {
     "dev": "wxt",
@@ -12,9 +12,12 @@
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox",
     "compile": "tsc --noEmit",
+    "check-types": "tsc --noEmit",
     "postinstall": "wxt prepare"
   },
   "dependencies": {
+    "@codeframe/shared": "workspace:*",
+    "lucide-react": "^0.460.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   },
@@ -22,6 +25,9 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@wxt-dev/module-react": "^1.1.5",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.15",
     "typescript": "^5.9.3",
     "web-ext": "^10.5.0",
     "wxt": "^0.21.3"

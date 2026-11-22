@@ -1,14 +1,17 @@
 # CodeFrame — Guided Learning & Build Guide (`README.md`)
 
-> **What this file is for:** This holds our **Learn-by-Building Rules** and our **Live Bookmark** so we always teach, build, and pause/resume in the exact same way. *(For the task checklist itself, see [WORKPLAN.md](./WORKPLAN.md).)*
+> **How our 3 guide files work together:**
+> - **[README.md](./README.md) (this file):** Our **Guided Learning Rules** and quick terminal commands.
+> - **[WORKPLAN.md](./WORKPLAN.md):** The **Big-Picture Roadmap** (Tasks 1–8).
+> - **[LOG.md](./LOG.md):** Our **Live Round-by-Round Journal & Bookmark** (tracks only the current micro-round we are building, with `[x]` checkboxes as we go).
 
 ---
 
-## 📍 Current Bookmark (Where We Are Right Now)
+## 📍 Current Bookmark (See [LOG.md](./LOG.md) for Live Round Details)
 
 - **Active Task:** Task 2 — Extension Setup & Popup UI (`apps/extension`)
-- **Exact Spot:** Ready to start **Task 2, Round 1** (setting up Tailwind/icons + our first *"I Show One $\rightarrow$ You Do One"* exercise in `entrypoints/popup/App.tsx`)
-- **Last Completed:** Task 1 (`packages/shared` shared types) + initialized WXT starter in `apps/extension`
+- **Current Round:** **Task 2, Round 2** (Icons & "Open Study Dashboard" button in `entrypoints/popup/App.tsx`)
+- **Last Completed:** Task 2, Round 1 (Tailwind/permissions setup + Popup Console logs)
 
 ---
 
@@ -29,17 +32,22 @@ For every code feature in the project:
 2. **You Do One:** You write the **next small piece** yourself using my example right above yours as a reference.
 3. **We Test Live:** I give you the exact click + Console check in Chrome to see your code working. If anything fails or shows an error, I read your file, explain why, and help you fix it.
 
-### 4. The `📍 Bookmark` Rule for Side Questions
+### 4. Track Every Round in `LOG.md`
+- Instead of writing 20 future rounds in advance, we **only add the current round** we are working on to **[LOG.md](./LOG.md)**.
+- Each round in `LOG.md` has checkboxes for **I Show**, **You Do**, and **We Test**, plus a 1-sentence **"What you learned"** takeaway.
+- As soon as a round passes testing, we tick its boxes `[x]` in `LOG.md` and add the next round below it.
+
+### 5. The `📍 Bookmark` Rule for Side Questions
 Whenever you pause to ask a question (*"Wait, what does that line do?"* or *"Why do we do it this way?"*):
-1. We save our exact stopping point in **`📍 Current Bookmark`** at the top of this file (and note it in chat).
+1. We save our exact stopping point in **`📍 Current Bookmark`** inside **[LOG.md](./LOG.md)** (and note it in chat).
 2. We explore and answer your question completely.
-3. When you're ready to continue, I read the bookmark and your current code/logs so we pick up from the exact line where we left off.
+3. When you're ready to continue, I read `LOG.md` and your current code/logs so we pick up from the exact line where we left off.
 
 ---
 
 ## 📝 Reusable Guided-Learning Prompt
 
-> *"Switch to Guided Learning Mode for this project: don't build whole files for me all at once, and don't ask me to code from scratch with zero reference. Break each project feature into tiny building blocks using an **'I Show One $\rightarrow$ You Do One $\rightarrow$ We Test'** loop (for example, you import one icon or write one log and explain it simply, then I add the next one and test it in the Console). Whenever I ask a side question, save a **Bookmark** of where we paused, answer my question in plain human language, and then use the bookmark and my code/logs to resume from that exact spot."*
+> *"Switch to Guided Learning Mode for this project: don't build whole files for me all at once, and don't ask me to code from scratch with zero reference. Break each project feature into tiny building blocks using an **'I Show One $\rightarrow$ You Do One $\rightarrow$ We Test'** loop, and track each active round with checkboxes inside **`LOG.md`**. Whenever I ask a side question, save a **Bookmark** of where we paused in `LOG.md`, answer my question in plain human language, and then use `LOG.md` and my code/logs to resume from that exact spot."*
 
 ---
 
@@ -48,7 +56,7 @@ Whenever you pause to ask a question (*"Wait, what does that line do?"* or *"Why
 - **Install / link all packages:** `pnpm install`
 - **Run everything together (Web + Extension):** `pnpm dev`
 - **Run only the Website (`localhost:3000`):** `pnpm --filter web dev`
-- **Run only the Chrome Extension:** `pnpm --filter wxt-react-starter dev` *(will become `pnpm --filter extension dev` in Task 2)*
+- **Run only the Chrome Extension:** `pnpm --filter extension dev`
 - **Check TypeScript across everything:** `pnpm check-types`
 
 ---
